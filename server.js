@@ -1,14 +1,18 @@
 const express = require("express");
+const connectDb = require("./config/dbConnection");
+const errorHandler = require("./middleware/errorHandler");
+const dotenv = require("dotenv").config();
 
-const port = 5000;
+connectDb();
 
 const app = express();
-app.use(express.json());
+const port = process.env.PORT || 5000;
 
-app.get("/", (req, res) => {
-  res.send("Hello World!");
-});
+app.use(express.json());
+app.use("/users", require("./routes/userRoutes"));
+app.use("/accounts", require("./routes/accountRoutes"));
+app.use(errorHandler);
 
 app.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
+  console.log(`Server running on port ${port}`);
 });
