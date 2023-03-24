@@ -21,7 +21,7 @@ const getAccounts = asyncHandler(async (req, res) => {
 const createAccount = asyncHandler(async (req, res) => {
   const { cash, credit, owner } = req.body;
   if (!cash || !credit || !owner) {
-    res.status(400);
+    res.status(403);
     throw new Error("All fields are required");
   }
   let user = await User.findById(owner);
@@ -50,7 +50,7 @@ const getAccount = asyncHandler(async (req, res) => {
   const account = await Account.findById(req.params.id);
   if (!account) {
     res.status(404);
-    throw new Error("Product not found");
+    throw new Error("Account not found");
   }
   res.status(200).json(account);
 });
@@ -62,23 +62,23 @@ const updateAccount = asyncHandler(async (req, res) => {
   let account = await Account.findById(req.params.id);
   if (!account) {
     res.status(404);
-    throw new Error("Product not found");
+    throw new Error("Account not found");
   }
 
-  const { cash, credit, email } = req.body;
+  const { cash, credit } = req.body;
   if (cash != null) {
     account.cash = cash;
   }
   if (credit != null) {
+    if (credit < 0) {
+      res.status(403);
+      throw new Error("Invalid update request: credit cannot be negative");
+    }
     account.credit = credit;
   }
 
-  const updatedAccount = await Account.findByIdAndUpdate(
-    req.params.id,
-    account
-  );
-
-  res.status(200).json(updatedAccount);
+  await Account.findByIdAndUpdate(req.params.id, account);
+  res.status(200).json(account);
 });
 
 //@desc Delete account
@@ -88,7 +88,7 @@ const deleteAccount = asyncHandler(async (req, res) => {
   const account = await Account.findById(req.params.id);
   if (!account) {
     res.status(404);
-    throw new Error("Product not found");
+    throw new Error("Account not found");
   }
   let user = await User.findById(account.owner);
   let index = user.accounts.indexOf(req.params.id);
@@ -109,7 +109,7 @@ const depositAccount = asyncHandler(async (req, res) => {
   let account = await Account.findById(req.params.id);
   if (!account) {
     res.status(404);
-    throw new Error("Product not found");
+    throw new Error("Account not found");
   }
 
   const { cash, credit } = req.body;
@@ -132,10 +132,115 @@ const depositAccount = asyncHandler(async (req, res) => {
   res.status(200).json(updatedAccount);
 });
 
+//@desc Transfer money
+//@route PUT /accounts/:from/transfer/:to
+//@access public
+const transferMoney = asyncHandler(async (req, res) => {
+  const from = req.params.from;
+  const to = req.params.to;
+  const { cash, credit } = req.body;
+
+  if (!from || !to || (!cash && !credit)) {
+    res.status(403);
+    throw new Error("Invalid transfer request");
+  }
+  if (cash && cash < 0) {
+    res.status(403);
+    throw new Error("Invalid cash transfer request");
+  }
+  if (credit && credit < 0) {
+    res.status(403);
+    throw new Error("Invalid credit transfer request");
+  }
+
+  let fromAccount = await Account.findById(from);
+  let toAccount = await Account.findById(to);
+  if (!fromAccount || !toAccount) {
+    res.status(404);
+    throw new Error("Couldn't find account");
+  }
+  if (credit && credit > fromAccount.credit) {
+    res.status(403);
+    throw new Error("Invalid credit request");
+  }
+  if (credit) {
+    fromAccount.credit -= credit;
+    toAccount.credit += credit;
+  }
+  if (cash) {
+    fromAccount.cash -= cash;
+    toAccount.cash += cash;
+  }
+  await Account.findByIdAndUpdate(from, fromAccount);
+  await Account.findByIdAndUpdate(to, toAccount);
+  res.status(200).send({ success: true, fromAccount, toAccount });
+});
+
+//@desc Get all users with greater cash value or credit value than given value
+//@route GET /accounts/greater-than/
+//@access public
+const getAccountsGreaterThan = asyncHandler(async (req, res) => {
+  const minCash = req.query.cash;
+  const minCredit = req.query.credit;
+
+  let query = {};
+  if (minCash != null && minCredit != null) {
+    query = {
+      $and: [{ cash: { $gt: minCash } }, { credit: { $gt: minCredit } }],
+    };
+  } else if (minCash != null) {
+    query = { cash: { $gt: minCash } };
+  } else if (minCredit != null) {
+    query = { credit: { $gt: minCredit } };
+  } else {
+    res.status(403);
+    throw new Error("Invalid query parameters");
+  }
+
+  const accounts = await Account.find(query);
+  if (!accounts) {
+    res.status(500);
+    throw new Error("Couldn't get accounts");
+  }
+  res.status(200).json({ success: true, data: accounts });
+});
+
+//@desc Get all users with lesser cash value or credit value than given value
+//@route GET /accounts/lesser-than/
+//@access public
+const getAccountsLesserThan = asyncHandler(async (req, res) => {
+  const maxCash = req.query.cash;
+  const maxCredit = req.query.credit;
+
+  let query = {};
+  if (maxCash != null && maxCredit != null) {
+    query = {
+      $and: [{ cash: { $lt: maxCash } }, { credit: { $lt: maxCredit } }],
+    };
+  } else if (maxCash != null) {
+    query = { cash: { $lt: maxCash } };
+  } else if (maxCredit != null) {
+    query = { credit: { $lt: maxCredit } };
+  } else {
+    res.status(403);
+    throw new Error("Invalid query parameters");
+  }
+
+  const accounts = await Account.find(query);
+  if (!accounts) {
+    res.status(500);
+    throw new Error("Couldn't get accounts");
+  }
+  res.status(200).json({ success: true, data: accounts });
+});
+
 module.exports = {
   getAccounts,
   createAccount,
   getAccount,
   updateAccount,
   deleteAccount,
+  transferMoney,
+  getAccountsGreaterThan,
+  getAccountsLesserThan,
 };

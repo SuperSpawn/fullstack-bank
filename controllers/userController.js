@@ -43,7 +43,7 @@ const getUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
   if (!user) {
     res.status(404);
-    throw new Error("Product not found");
+    throw new Error("User not found");
   }
   res.status(200).json(user);
 });
@@ -55,7 +55,7 @@ const updateUser = asyncHandler(async (req, res) => {
   let user = await User.findById(req.params.id);
   if (!user) {
     res.status(404);
-    throw new Error("Product not found");
+    throw new Error("User not found");
   }
 
   const { name, email, isActive, accounts } = req.body;
@@ -84,7 +84,7 @@ const deleteUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
   if (!user) {
     res.status(404);
-    throw new Error("Product not found");
+    throw new Error("User not found");
   }
   const deleteResult = await Account.deleteMany({ owner: user._id });
   if (!deleteResult.acknowledged) {
@@ -96,10 +96,36 @@ const deleteUser = asyncHandler(async (req, res) => {
   res.status(200).json(user);
 });
 
+//@desc Get all active users
+//@route GET /users/active
+//@access public
+const getActiveUsers = asyncHandler(async (req, res) => {
+  const users = await User.find({ isActive: true });
+  if (!users) {
+    res.status(500);
+    throw new Error("Server error");
+  }
+  res.json({ success: true, data: users });
+});
+
+//@desc Get all inactive users
+//@route GET /users/inactive
+//@access public
+const getInActiveUsers = asyncHandler(async (req, res) => {
+  const users = await User.find({ isActive: false });
+  if (!users) {
+    res.status(500);
+    throw new Error("Server error");
+  }
+  res.json({ success: true, data: users });
+});
+
 module.exports = {
   getUsers,
   createUser,
   getUser,
   updateUser,
   deleteUser,
+  getActiveUsers,
+  getInActiveUsers,
 };
