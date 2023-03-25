@@ -7,33 +7,36 @@ const Account = require("../models/accountModel");
 //@route GET /users/
 //@access public
 const getUsers = asyncHandler(async (req, res) => {
-  try {
-    const users = await User.find();
-    res.status(200).json({ success: true, data: users });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ success: false, error: "Server error" });
-  }
+  res.statusCode(500);
+  const users = await User.find();
+  res.status(200).json({ success: true, data: users });
 });
 
 //@desc Create a new user
 //@route POST /users/
 //@access public
 const createUser = asyncHandler(async (req, res) => {
-  try {
-    const { name, email } = req.body;
-    const user = new User({
-      name,
-      email,
-      isActive: true,
-      accounts: [],
-    });
-    await user.save();
-    res.status(201).json({ success: true, data: user });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, error: "Server Error" });
+  const { name, email } = req.body;
+  if (!name || !email) {
+    res.status(400);
+    throw new Error("Invalid user parameters");
   }
+
+  const userTaken = await User.findOne({ email: email });
+  if (userTaken) {
+    res.status(403);
+    throw new Error("Email already taken");
+  }
+
+  const user = new User({
+    name,
+    email,
+    isActive: true,
+    accounts: [],
+  });
+  res.status(500);
+  await user.save();
+  res.status(201).json({ success: true, data: user });
 });
 
 //@desc Get user
