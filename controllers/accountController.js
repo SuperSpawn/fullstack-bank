@@ -64,6 +64,10 @@ const updateAccount = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error("Account not found");
   }
+  if (account.isActive === false) {
+    res.status(403);
+    throw new Error("Account is not active, cannot update");
+  }
 
   const { cash, credit } = req.body;
   if (cash != null) {
@@ -106,10 +110,20 @@ const deleteAccount = asyncHandler(async (req, res) => {
 //@route PUT /accounts/interact/:id
 //@access public
 const changeAccount = asyncHandler(async (req, res) => {
+  res.statusCode(500);
   let account = await Account.findById(req.params.id);
   if (!account) {
     res.status(404);
     throw new Error("Account not found");
+  }
+  let user = await User.findById(account.owner);
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+  if (user.isActive === false) {
+    res.status(403);
+    throw new Error("User is inactive");
   }
 
   const { cash, credit } = req.body;
@@ -163,6 +177,11 @@ const transferMoney = asyncHandler(async (req, res) => {
     res.status(403);
     throw new Error("Invalid credit request");
   }
+  if (fromAccount.isActive === false) {
+    res.status(403);
+    throw new Error("User is inactive cannot send money");
+  }
+
   if (credit) {
     fromAccount.credit -= credit;
     toAccount.credit += credit;
