@@ -103,9 +103,9 @@ const deleteAccount = asyncHandler(async (req, res) => {
 });
 
 //@desc Update account
-//@route PUT /accounts/:id
+//@route PUT /accounts/interact/:id
 //@access public
-const depositAccount = asyncHandler(async (req, res) => {
+const changeAccount = asyncHandler(async (req, res) => {
   let account = await Account.findById(req.params.id);
   if (!account) {
     res.status(404);
@@ -243,4 +243,5 @@ module.exports = {
   transferMoney,
   getAccountsGreaterThan,
   getAccountsLesserThan,
+  changeAccount,
 };
