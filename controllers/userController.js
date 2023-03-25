@@ -7,8 +7,8 @@ const Account = require("../models/accountModel");
 //@route GET /users/
 //@access public
 const getUsers = asyncHandler(async (req, res) => {
-  res.statusCode(500);
-  const users = await User.find();
+  res.status(500);
+  const users = await User.find().populate("accounts");
   res.status(200).json({ success: true, data: users });
 });
 
@@ -22,6 +22,7 @@ const createUser = asyncHandler(async (req, res) => {
     throw new Error("Invalid user parameters");
   }
 
+  res.status(500);
   const userTaken = await User.findOne({ email: email });
   if (userTaken) {
     res.status(403);
@@ -34,7 +35,6 @@ const createUser = asyncHandler(async (req, res) => {
     isActive: true,
     accounts: [],
   });
-  res.status(500);
   await user.save();
   res.status(201).json({ success: true, data: user });
 });
@@ -43,11 +43,13 @@ const createUser = asyncHandler(async (req, res) => {
 //@route GET /users/:id
 //@access public
 const getUser = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id);
+  res.status(500);
+  const user = await User.findById(req.params.id).populate("accounts");
   if (!user) {
     res.status(404);
     throw new Error("User not found");
   }
+
   res.status(200).json(user);
 });
 
@@ -55,6 +57,7 @@ const getUser = asyncHandler(async (req, res) => {
 //@route PUT /users/:id
 //@access public
 const updateUser = asyncHandler(async (req, res) => {
+  res.status(500);
   let user = await User.findById(req.params.id);
   if (!user) {
     res.status(404);
@@ -84,6 +87,7 @@ const updateUser = asyncHandler(async (req, res) => {
 //@route DELETE /users/:id
 //@access public
 const deleteUser = asyncHandler(async (req, res) => {
+  res.status(500);
   const user = await User.findById(req.params.id);
   if (!user) {
     res.status(404);
@@ -95,6 +99,7 @@ const deleteUser = asyncHandler(async (req, res) => {
     throw new Error("Couldn't delete user accounts");
   }
 
+  res.status(500);
   await User.findByIdAndDelete(req.params.id);
   res.status(200).json(user);
 });
@@ -103,24 +108,26 @@ const deleteUser = asyncHandler(async (req, res) => {
 //@route GET /users/active
 //@access public
 const getActiveUsers = asyncHandler(async (req, res) => {
+  res.status(500);
   const users = await User.find({ isActive: true });
   if (!users) {
-    res.status(500);
-    throw new Error("Server error");
+    res.status(404);
+    throw new Error("Users not found");
   }
-  res.json({ success: true, data: users });
+  res.status(200).json({ success: true, data: users });
 });
 
 //@desc Get all inactive users
 //@route GET /users/inactive
 //@access public
 const getInActiveUsers = asyncHandler(async (req, res) => {
+  res.status(500);
   const users = await User.find({ isActive: false });
   if (!users) {
     res.status(500);
     throw new Error("Server error");
   }
-  res.json({ success: true, data: users });
+  res.status(200).json({ success: true, data: users });
 });
 
 module.exports = {
