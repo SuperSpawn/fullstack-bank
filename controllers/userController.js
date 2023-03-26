@@ -9,6 +9,10 @@ const Account = require("../models/accountModel");
 const getUsers = asyncHandler(async (req, res) => {
   res.status(500);
   const users = await User.find().populate("accounts");
+  if (!users) {
+    res.status(404);
+    throw new Error("Users not found");
+  }
   res.status(200).json({ success: true, data: users });
 });
 
@@ -72,15 +76,14 @@ const updateUser = asyncHandler(async (req, res) => {
     user.email = email;
   }
   if (isActive != null) {
-    product.isActive = isActive;
+    user.isActive = isActive;
   }
   if (accounts != null) {
-    product.accounts = accounts;
+    user.accounts = accounts;
   }
 
-  const updatedUser = await User.findByIdAndUpdate(req.params.id, user);
-
-  res.status(200).json(updatedUser);
+  await User.findByIdAndUpdate(req.params.id, user);
+  res.status(200).json(user);
 });
 
 //@desc Delete user

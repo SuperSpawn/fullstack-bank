@@ -6,13 +6,9 @@ const User = require("../models/userModel");
 //@route GET /accounts
 //@access public
 const getAccounts = asyncHandler(async (req, res) => {
-  try {
-    const accounts = await Account.find();
-    res.status(200).json({ success: true, data: accounts });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ success: false, error: "Server error" });
-  }
+  res.status(500);
+  const accounts = await Account.find();
+  res.status(200).json({ success: true, data: accounts });
 });
 
 //@desc Create a new account for a user
@@ -20,6 +16,7 @@ const getAccounts = asyncHandler(async (req, res) => {
 //@access public
 const createAccount = asyncHandler(async (req, res) => {
   const { cash, credit, owner } = req.body;
+  res.status(500);
   if (!cash || !credit || !owner) {
     res.status(403);
     throw new Error("All fields are required");
@@ -29,6 +26,11 @@ const createAccount = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error("Cannot find user");
   }
+  if (user.isActive === false) {
+    res.status(403);
+    throw new Error("Cannot create account for inactive user");
+  }
+
   const account = await Account.create({
     owner: owner,
     cash: cash,
@@ -59,12 +61,19 @@ const getAccount = asyncHandler(async (req, res) => {
 //@route PUT /accounts/:id
 //@access public
 const updateAccount = asyncHandler(async (req, res) => {
+  res.status(500);
   let account = await Account.findById(req.params.id);
   if (!account) {
     res.status(404);
     throw new Error("Account not found");
   }
-  if (account.isActive === false) {
+  let user = await User.findById(account.owner);
+  if (!user) {
+    res.status(404);
+    throw new Error("Owner not found");
+  }
+
+  if (user.isActive === false) {
     res.status(403);
     throw new Error("Account is not active, cannot update");
   }
@@ -110,7 +119,7 @@ const deleteAccount = asyncHandler(async (req, res) => {
 //@route PUT /accounts/interact/:id
 //@access public
 const changeAccount = asyncHandler(async (req, res) => {
-  res.statusCode(500);
+  res.status(500);
   let account = await Account.findById(req.params.id);
   if (!account) {
     res.status(404);
@@ -137,7 +146,6 @@ const changeAccount = asyncHandler(async (req, res) => {
     }
     account.credit += credit;
   }
-
   const updatedAccount = await Account.findByIdAndUpdate(
     req.params.id,
     account
@@ -154,6 +162,7 @@ const transferMoney = asyncHandler(async (req, res) => {
   const to = req.params.to;
   const { cash, credit } = req.body;
 
+  res.status(500);
   if (!from || !to || (!cash && !credit)) {
     res.status(403);
     throw new Error("Invalid transfer request");
@@ -169,15 +178,18 @@ const transferMoney = asyncHandler(async (req, res) => {
 
   let fromAccount = await Account.findById(from);
   let toAccount = await Account.findById(to);
+
   if (!fromAccount || !toAccount) {
     res.status(404);
     throw new Error("Couldn't find account");
   }
+
+  let fromUser = await User.findById(fromAccount.owner);
   if (credit && credit > fromAccount.credit) {
     res.status(403);
     throw new Error("Invalid credit request");
   }
-  if (fromAccount.isActive === false) {
+  if (fromUser.isActive === false) {
     res.status(403);
     throw new Error("User is inactive cannot send money");
   }
